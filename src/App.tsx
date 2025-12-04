@@ -113,21 +113,23 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-50">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900/80 backdrop-blur">
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-lg font-semibold tracking-tight">
-            Moodboard Builder
-          </h1>
-          <span className="text-xs text-slate-400">
-            React • TypeScript • Tailwind
-          </span>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-50">
+      <header className="flex items-center justify-between px-6 py-3 border-b border-slate-800/70 bg-slate-950/70 backdrop-blur-sm shadow-sm">
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Moodboard Builder
+            </h1>
+            <p className="text-xs text-slate-400">
+              Drag, layer, and export moodboards like a design tool.
+            </p>
+          </div>
         </div>
         <button
           onClick={handleExport}
-          className="px-3 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-sm font-medium text-slate-900"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-sm font-medium text-slate-900 shadow-sm transition-colors"
         >
-          Export PNG
+          <span>Export PNG</span>
         </button>
       </header>
 

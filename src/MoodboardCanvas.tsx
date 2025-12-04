@@ -77,11 +77,17 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
 
     const handleMouseUp = () => setDrag(null);
 
-    // only clear selection when clicking the empty board, not elements
+    // click empty board to clear selection
     const handleBoardMouseDown = (e: ReactMouseEvent) => {
       if (e.target === e.currentTarget) {
         onSelect(null);
       }
+    };
+
+    const boardStyle: React.CSSProperties = {
+      backgroundImage:
+        "radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.22) 1px, transparent 0)",
+      backgroundSize: "24px 24px",
     };
 
     return (
@@ -93,7 +99,8 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
       >
         <div
           ref={combinedRef}
-          className="relative bg-slate-900 rounded-xl shadow-lg border border-slate-800 w-[900px] h-[600px] overflow-hidden"
+          style={boardStyle}
+          className="relative bg-slate-900/90 rounded-2xl shadow-[0_24px_60px_rgba(15,23,42,0.85)] border border-slate-800/90 w-[920px] h-[620px] overflow-hidden"
           onMouseDown={handleBoardMouseDown}
         >
           {elements
@@ -116,8 +123,10 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                 <div
                   key={el.id}
                   style={style}
-                  className={`group cursor-move ${
-                    isSelected ? "ring-2 ring-emerald-400" : ""
+                  className={`group cursor-move rounded-xl transition-transform transition-shadow duration-150 ${
+                    isSelected
+                      ? "ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/30"
+                      : "shadow-md shadow-slate-950/60 hover:shadow-lg hover:shadow-slate-900/80"
                   }`}
                   onMouseDown={(e) => handleMouseDownElement(e, el, "move")}
                 >
@@ -125,20 +134,20 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                     <img
                       src={el.src}
                       alt=""
-                      className="w-full h-full object-cover rounded-md pointer-events-none select-none"
+                      className="w-full h-full object-cover rounded-xl pointer-events-none select-none"
                       draggable={false}
                       onDragStart={(ev) => ev.preventDefault()}
                     />
                   )}
 
                   {el.type === "text" && (
-                    <div className="w-full h-full flex items-center justify-center rounded-md bg-slate-900/60 px-2 text-center">
+                    <div className="w-full h-full flex items-center justify-center rounded-xl bg-slate-900/80 px-3 text-center border border-slate-700/80">
                       <p
                         style={{
                           color: (el as any).color,
                           fontSize: (el as any).fontSize,
                         }}
-                        className="font-medium leading-snug"
+                        className="font-medium leading-snug tracking-tight"
                       >
                         {(el as any).text}
                       </p>
@@ -147,7 +156,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
 
                   {el.type === "swatch" && (
                     <div
-                      className="w-full h-full rounded-md border border-slate-800"
+                      className="w-full h-full rounded-xl border border-slate-800"
                       style={{ backgroundColor: (el as any).color }}
                     />
                   )}
