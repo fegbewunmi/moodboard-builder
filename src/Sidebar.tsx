@@ -63,9 +63,6 @@ export const Sidebar: React.FC<Props> = ({
       <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-100">Elements</h2>
-          <span className="text-[10px] uppercase tracking-wide text-slate-500">
-            Add
-          </span>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -125,10 +122,6 @@ export const Sidebar: React.FC<Props> = ({
 
       {/* Selected element panel */}
       <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 flex-1 flex flex-col">
-        <h2 className="text-sm font-semibold text-slate-100 mb-2">
-          Selected Element
-        </h2>
-
         {!selected && (
           <p className="text-xs text-slate-500">
             Click an element on the board to edit its properties.
@@ -138,9 +131,9 @@ export const Sidebar: React.FC<Props> = ({
         {selected && (
           <div className="flex flex-col gap-2 text-xs">
             <div className="flex items-center justify-between mb-1">
-              <span className="uppercase tracking-wide text-slate-400">
-                Type
-              </span>
+              <h2 className="text-sm font-semibold text-slate-100 mb-2">
+                Selected Element
+              </h2>
               <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px] border border-slate-700 text-slate-200">
                 {selected.type.toUpperCase()}
               </span>

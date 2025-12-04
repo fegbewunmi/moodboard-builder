@@ -277,19 +277,9 @@ function App() {
               Drag, layer, and export moodboards like a design tool.
             </p>
           </div>
-          <span className="hidden sm:inline-flex text-[11px] px-2 py-1 rounded-full border border-slate-700/80 text-slate-300 bg-slate-900/80">
-            React · TypeScript · Tailwind
-          </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportPng}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-sm font-medium text-slate-900 shadow-sm transition-colors"
-          >
-            Export PNG
-          </button>
-
           <button
             onClick={handleExportJson}
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-700 bg-slate-900 hover:bg-slate-800 text-[11px] font-medium text-slate-200"
@@ -312,6 +302,13 @@ function App() {
               onChange={handleImportJson}
             />
           </div>
+
+          <button
+            onClick={handleExportPng}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-sm font-medium text-slate-900 shadow-sm transition-colors"
+          >
+            Export PNG
+          </button>
         </div>
       </header>
 
