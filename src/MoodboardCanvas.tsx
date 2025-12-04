@@ -1,10 +1,5 @@
-import React, {
-  forwardRef,
-  useRef,
-  useState,
-  MouseEvent as ReactMouseEvent,
-} from "react";
-import { MoodboardElement } from "./types";
+import React, { forwardRef, useRef, useState } from "react";
+import type { MoodboardElement } from "./types";
 
 type Props = {
   elements: MoodboardElement[];
@@ -37,7 +32,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
     const [drag, setDrag] = useState<DragState>(null);
 
     const handleMouseDownElement = (
-      e: ReactMouseEvent,
+      e: React.MouseEvent,
       el: MoodboardElement,
       mode: "move" | "resize" = "move"
     ) => {
@@ -59,7 +54,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
       });
     };
 
-    const handleMouseMove = (e: ReactMouseEvent) => {
+    const handleMouseMove = (e: React.MouseEvent) => {
       if (!drag) return;
       e.preventDefault();
 
