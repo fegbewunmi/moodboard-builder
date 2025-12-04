@@ -28,6 +28,8 @@ export const Sidebar: React.FC<Props> = ({
   canvasTheme,
   onChangeCanvasTheme,
 }) => {
+  const FONT_OPTIONS = ["Inter", "Playfair Display", "Poppins", "DM Sans"];
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -158,7 +160,24 @@ export const Sidebar: React.FC<Props> = ({
                     }
                   />
                 </label>
-
+                <label className="flex items-center justify-between gap-2">
+                  <span className="text-slate-300">Font</span>
+                  <select
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/60"
+                    value={(selected as TextElement).fontFamily || "Inter"}
+                    onChange={(e) =>
+                      onUpdateSelected({
+                        fontFamily: e.target.value,
+                      } as any)
+                    }
+                  >
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="flex items-center justify-between gap-2">
                   <span className="text-slate-300">Font size</span>
                   <input

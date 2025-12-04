@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { toPng } from "html-to-image";
 import type {
@@ -14,11 +14,18 @@ export type CanvasTheme = "grid" | "dots" | "paper" | "plain";
 
 const initialElements: MoodboardElement[] = [];
 
+type ProjectState = {
+  elements: MoodboardElement[];
+  canvasTheme: CanvasTheme;
+};
+
 function App() {
   const [elements, setElements] = useState<MoodboardElement[]>(initialElements);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [canvasTheme, setCanvasTheme] = useState<CanvasTheme>("dots");
+
   const boardRef = useRef<HTMLDivElement | null>(null);
+  const jsonInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedElement = elements.find((el) => el.id === selectedId) || null;
 
@@ -34,6 +41,7 @@ function App() {
       rotation: 0,
       color: "#ffffff",
       fontSize: 18,
+      fontFamily: "Inter", // 👈 default font
       zIndex: elements.length + 1,
     };
     setElements((prev) => [...prev, el]);
@@ -107,26 +115,140 @@ function App() {
   };
 
   const duplicateSelected = () => {
-    if (!selectedElement) return;
+    const sel = elements.find((el) => el.id === selectedId) || null;
+    if (!sel) return;
+
     const clone: MoodboardElement = {
-      ...selectedElement,
+      ...sel,
       id: uuid(),
-      x: selectedElement.x + 24,
-      y: selectedElement.y + 24,
-      zIndex: selectedElement.zIndex + 1,
+      x: sel.x + 24,
+      y: sel.y + 24,
+      zIndex: sel.zIndex + 1,
     };
     setElements((prev) => [...prev, clone]);
     setSelectedId(clone.id);
   };
 
-  const handleExport = useCallback(async () => {
+  const handleExportPng = useCallback(async () => {
     if (!boardRef.current) return;
-    const dataUrl = await toPng(boardRef.current, { cacheBust: true });
+    const dataUrl = await toPng(boardRef.current, {
+      cacheBust: true,
+    });
     const link = document.createElement("a");
     link.download = "moodboard.png";
     link.href = dataUrl;
     link.click();
   }, []);
+
+  const handleExportJson = () => {
+    const state: ProjectState = {
+      elements,
+      canvasTheme,
+    };
+    const blob = new Blob([JSON.stringify(state, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "moodboard.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(
+          reader.result as string
+        ) as Partial<ProjectState>;
+
+        setElements(data.elements ?? []);
+        if (data.canvasTheme) {
+          setCanvasTheme(data.canvasTheme);
+        }
+        setSelectedId(null);
+      } catch (err) {
+        console.error("Invalid project JSON", err);
+      }
+    };
+    reader.readAsText(file);
+    // allow selecting the same file again later
+    e.target.value = "";
+  };
+
+  // 🔥 Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const sel = elements.find((el) => el.id === selectedId) || null;
+
+      // Delete selected
+      if ((e.key === "Delete" || e.key === "Backspace") && sel) {
+        e.preventDefault();
+        setElements((prev) => prev.filter((el) => el.id !== sel.id));
+        setSelectedId(null);
+        return;
+      }
+
+      // Duplicate: Cmd/Ctrl + D
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d" && sel) {
+        e.preventDefault();
+        const clone: MoodboardElement = {
+          ...sel,
+          id: uuid(),
+          x: sel.x + 24,
+          y: sel.y + 24,
+          zIndex: sel.zIndex + 1,
+        };
+        setElements((prev) => [...prev, clone]);
+        setSelectedId(clone.id);
+        return;
+      }
+
+      if (!sel) return;
+
+      // Arrow key nudging
+      const nudge = e.shiftKey ? 24 : 4;
+      let dx = 0;
+      let dy = 0;
+      if (e.key === "ArrowLeft") dx = -nudge;
+      if (e.key === "ArrowRight") dx = nudge;
+      if (e.key === "ArrowUp") dy = -nudge;
+      if (e.key === "ArrowDown") dy = nudge;
+
+      if (dx !== 0 || dy !== 0) {
+        e.preventDefault();
+        setElements((prev) =>
+          prev.map((el) =>
+            el.id === sel.id
+              ? {
+                  ...el,
+                  x: el.x + dx,
+                  y: el.y + dy,
+                }
+              : el
+          )
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [elements, selectedId]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-50">
@@ -144,12 +266,38 @@ function App() {
             React · TypeScript · Tailwind
           </span>
         </div>
-        <button
-          onClick={handleExport}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-sm font-medium text-slate-900 shadow-sm transition-colors"
-        >
-          <span>Export PNG</span>
-        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportPng}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-sm font-medium text-slate-900 shadow-sm transition-colors"
+          >
+            Export PNG
+          </button>
+
+          <button
+            onClick={handleExportJson}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-700 bg-slate-900 hover:bg-slate-800 text-[11px] font-medium text-slate-200"
+          >
+            Save JSON
+          </button>
+
+          <div>
+            <button
+              onClick={() => jsonInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-slate-700 bg-slate-900 hover:bg-slate-800 text-[11px] font-medium text-slate-200"
+            >
+              Load JSON
+            </button>
+            <input
+              ref={jsonInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={handleImportJson}
+            />
+          </div>
+        </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden">

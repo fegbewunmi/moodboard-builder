@@ -1,8 +1,7 @@
 import React, { forwardRef, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { MoodboardElement } from "./types";
-
-type CanvasTheme = "grid" | "dots" | "paper" | "plain";
+import type { CanvasTheme } from "./App";
 
 type Props = {
   elements: MoodboardElement[];
@@ -31,7 +30,6 @@ type DragState = null | {
 };
 
 const GRID_SIZE = 24;
-
 const snap = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
 
 export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
@@ -59,12 +57,36 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
 
     const [drag, setDrag] = useState<DragState>(null);
 
+    // 🔹 inline text editing state
+    const [editingTextId, setEditingTextId] = useState<string | null>(null);
+    const [editingValue, setEditingValue] = useState<string>("");
+
+    const startEditingText = (el: MoodboardElement) => {
+      if (el.type !== "text") return;
+      setEditingTextId(el.id);
+      // @ts-expect-error text exists on text element
+      setEditingValue(el.text ?? "");
+    };
+
+    const commitEditingText = () => {
+      if (!editingTextId) return;
+      onUpdateElement(editingTextId, { text: editingValue } as any);
+      setEditingTextId(null);
+    };
+
+    const cancelEditingText = () => {
+      setEditingTextId(null);
+    };
+
     const handleMouseDownElement = (
       e: ReactMouseEvent,
       el: MoodboardElement,
       mode: "move" | "resize" = "move",
       corner?: ResizeCorner
     ) => {
+      // don't start drag while we are editing this text element
+      if (editingTextId && editingTextId === el.id) return;
+
       e.preventDefault();
       e.stopPropagation();
       onSelect(el.id);
@@ -94,10 +116,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
       if (drag.mode === "move") {
         const newX = snap(drag.origX + dx);
         const newY = snap(drag.origY + dy);
-        onUpdateElement(drag.id, {
-          x: newX,
-          y: newY,
-        });
+        onUpdateElement(drag.id, { x: newX, y: newY });
       } else if (drag.mode === "resize") {
         let { origX, origY, origW, origH } = drag;
         let x = origX;
@@ -126,8 +145,6 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
             x = origX + dx;
             y = origY + dy;
             break;
-          default:
-            break;
         }
 
         w = Math.max(60, w);
@@ -144,39 +161,43 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
 
     const handleMouseUp = () => setDrag(null);
 
-    // click empty board to clear selection
     const handleBoardMouseDown = (e: ReactMouseEvent) => {
       if (e.target === e.currentTarget) {
         onSelect(null);
+        cancelEditingText();
       }
     };
 
     const selected = elements.find((el) => el.id === selectedId) || null;
 
-    // theme backgrounds
-    let boardStyle: React.CSSProperties = {};
+    // theme styles
+    let backgroundColor = "#020617";
+    let backgroundImage: string | undefined;
+    let backgroundSize: string | undefined;
+
     if (canvasTheme === "dots") {
-      boardStyle = {
-        backgroundImage:
-          "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.24) 1px, transparent 0)",
-        backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
-      };
+      backgroundImage =
+        "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.24) 1px, transparent 0)";
+      backgroundSize = `${GRID_SIZE}px ${GRID_SIZE}px`;
     } else if (canvasTheme === "grid") {
-      boardStyle = {
-        backgroundImage:
-          "linear-gradient(to right, rgba(148,163,184,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.22) 1px, transparent 1px)",
-        backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
-      };
+      backgroundImage =
+        "linear-gradient(to right, rgba(148,163,184,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.22) 1px, transparent 1px)";
+      backgroundSize = `${GRID_SIZE}px ${GRID_SIZE}px`;
     } else if (canvasTheme === "paper") {
-      boardStyle = {
-        backgroundImage:
-          "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,64,175,0.75))",
-      };
+      backgroundImage =
+        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,64,175,0.8))";
+      backgroundSize = undefined;
     } else {
-      boardStyle = {
-        backgroundColor: "#020617",
-      };
+      backgroundImage = undefined;
+      backgroundSize = undefined;
+      backgroundColor = "#020617";
     }
+
+    const boardStyle: React.CSSProperties = {
+      backgroundColor,
+      backgroundImage,
+      backgroundSize,
+    };
 
     return (
       <div
@@ -191,6 +212,11 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
           className="relative bg-slate-900/90 rounded-2xl shadow-[0_24px_60px_rgba(15,23,42,0.85)] border border-slate-800/90 w-[920px] h-[620px] overflow-hidden"
           onMouseDown={handleBoardMouseDown}
         >
+          {/* theme label */}
+          <div className="absolute top-3 left-4 px-2 py-0.5 rounded-full bg-slate-900/80 border border-slate-700 text-[10px] uppercase tracking-wide text-slate-300">
+            Theme: {canvasTheme}
+          </div>
+
           {/* floating toolbar */}
           {selected && (
             <div
@@ -245,6 +271,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
             .sort((a, b) => a.zIndex - b.zIndex)
             .map((el) => {
               const isSelected = el.id === selectedId;
+              const isEditing = el.id === editingTextId;
               const style: React.CSSProperties = {
                 position: "absolute",
                 left: el.x,
@@ -260,12 +287,18 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                 <div
                   key={el.id}
                   style={style}
-                  className={`group cursor-move rounded-xl transition-transform transition-shadow duration-150 ${
+                  className={`group rounded-xl transition-transform transition-shadow duration-150 ${
                     isSelected
                       ? "ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/30"
                       : "shadow-md shadow-slate-950/60 hover:shadow-lg hover:shadow-slate-900/80"
-                  }`}
+                  } ${isEditing ? "cursor-text" : "cursor-move"}`}
                   onMouseDown={(e) => handleMouseDownElement(e, el, "move")}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (el.type === "text") {
+                      startEditingText(el);
+                    }
+                  }}
                 >
                   {el.type === "image" && (
                     <img
@@ -277,28 +310,65 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                     />
                   )}
 
-                  {el.type === "text" && (
+                  {el.type === "text" && !isEditing && (
                     <div className="w-full h-full flex items-center justify-center rounded-xl bg-slate-900/80 px-3 text-center border border-slate-700/80">
                       <p
                         style={{
-                          color: (el as any).color,
-                          fontSize: (el as any).fontSize,
+                          // @ts-expect-error text element props
+                          color: el.color,
+                          // @ts-expect-error text element props
+                          fontSize: el.fontSize,
+                          // @ts-expect-error text element props
+                          fontFamily:
+                            el.fontFamily ||
+                            "Inter, system-ui, -apple-system, sans-serif",
                         }}
-                        className="font-medium leading-snug tracking-tight"
+                        className="font-medium leading-snug tracking-tight whitespace-pre-wrap"
                       >
-                        {(el as any).text}
+                        {
+                          // @ts-expect-error text element props
+                          el.text
+                        }
                       </p>
                     </div>
+                  )}
+
+                  {el.type === "text" && isEditing && (
+                    <textarea
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onBlur={commitEditingText}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          commitEditingText();
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelEditingText();
+                        }
+                      }}
+                      autoFocus
+                      className="w-full h-full rounded-xl bg-slate-900/90 px-3 py-2 text-center border border-slate-700/80 text-xs text-slate-50 resize-none outline-none"
+                      style={{
+                        // @ts-expect-error text element props
+                        fontSize: el.fontSize,
+                        // @ts-expect-error text element props
+                        fontFamily:
+                          el.fontFamily ||
+                          "Inter, system-ui, -apple-system, sans-serif",
+                      }}
+                    />
                   )}
 
                   {el.type === "swatch" && (
                     <div
                       className="w-full h-full rounded-xl border border-slate-800"
-                      style={{ backgroundColor: (el as any).color }}
+                      // @ts-expect-error swatch color
+                      style={{ backgroundColor: el.color }}
                     />
                   )}
 
-                  {/* resize handles - 4 corners */}
+                  {/* resize handles */}
                   {(["nw", "ne", "sw", "se"] as ResizeCorner[]).map(
                     (corner) => {
                       const cornerClasses =
@@ -316,7 +386,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                           onMouseDown={(e) =>
                             handleMouseDownElement(e, el, "resize", corner)
                           }
-                          className={`absolute w-3 h-3 rounded-full bg-slate-100 text-[9px] shadow-sm border border-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ${cornerClasses}`}
+                          className={`absolute w-3 h-3 rounded-full bg-slate-100 shadow-sm border border-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ${cornerClasses}`}
                         />
                       );
                     }

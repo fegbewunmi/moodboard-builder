@@ -21,6 +21,7 @@ export interface TextElement extends BaseElement {
   text: string;
   color: string;
   fontSize: number;
+  fontFamily: string;
 }
 
 export interface SwatchElement extends BaseElement {
