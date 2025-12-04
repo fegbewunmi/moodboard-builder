@@ -1,6 +1,8 @@
 import React from "react";
 import type { MoodboardElement, TextElement, SwatchElement } from "./types";
 
+type CanvasTheme = "grid" | "dots" | "paper" | "plain";
+
 type Props = {
   onAddText: (text: string) => void;
   onAddSwatch: (color: string) => void;
@@ -10,6 +12,8 @@ type Props = {
   onBringForward: () => void;
   onSendBackward: () => void;
   onDelete: () => void;
+  canvasTheme: CanvasTheme;
+  onChangeCanvasTheme: (theme: CanvasTheme) => void;
 };
 
 export const Sidebar: React.FC<Props> = ({
@@ -21,6 +25,8 @@ export const Sidebar: React.FC<Props> = ({
   onBringForward,
   onSendBackward,
   onDelete,
+  canvasTheme,
+  onChangeCanvasTheme,
 }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,6 +40,20 @@ export const Sidebar: React.FC<Props> = ({
     };
     reader.readAsDataURL(file);
   };
+
+  const themeButton = (theme: CanvasTheme, label: string) => (
+    <button
+      key={theme}
+      onClick={() => onChangeCanvasTheme(theme)}
+      className={`px-2 py-1 rounded-md text-[10px] uppercase tracking-wide border ${
+        canvasTheme === theme
+          ? "bg-emerald-500/90 text-slate-950 border-emerald-400"
+          : "bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800"
+      } transition-colors`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <aside className="w-80 border-r border-slate-800/80 bg-slate-950/70 backdrop-blur-sm p-4 flex flex-col gap-4">
@@ -85,6 +105,18 @@ export const Sidebar: React.FC<Props> = ({
                 onClick={() => onAddSwatch(c)}
               />
             ))}
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-slate-800/60 mt-1">
+          <h3 className="text-xs font-semibold text-slate-300 mb-1">
+            Canvas Theme
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {themeButton("dots", "Dots")}
+            {themeButton("grid", "Grid")}
+            {themeButton("paper", "Paper")}
+            {themeButton("plain", "Plain")}
           </div>
         </div>
       </section>

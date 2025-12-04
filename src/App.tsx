@@ -10,11 +10,14 @@ import type {
 import { MoodboardCanvas } from "./MoodboardCanvas";
 import { Sidebar } from "./Sidebar";
 
+export type CanvasTheme = "grid" | "dots" | "paper" | "plain";
+
 const initialElements: MoodboardElement[] = [];
 
 function App() {
   const [elements, setElements] = useState<MoodboardElement[]>(initialElements);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [canvasTheme, setCanvasTheme] = useState<CanvasTheme>("dots");
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const selectedElement = elements.find((el) => el.id === selectedId) || null;
@@ -103,6 +106,19 @@ function App() {
     setSelectedId(null);
   };
 
+  const duplicateSelected = () => {
+    if (!selectedElement) return;
+    const clone: MoodboardElement = {
+      ...selectedElement,
+      id: uuid(),
+      x: selectedElement.x + 24,
+      y: selectedElement.y + 24,
+      zIndex: selectedElement.zIndex + 1,
+    };
+    setElements((prev) => [...prev, clone]);
+    setSelectedId(clone.id);
+  };
+
   const handleExport = useCallback(async () => {
     if (!boardRef.current) return;
     const dataUrl = await toPng(boardRef.current, { cacheBust: true });
@@ -124,6 +140,9 @@ function App() {
               Drag, layer, and export moodboards like a design tool.
             </p>
           </div>
+          <span className="hidden sm:inline-flex text-[11px] px-2 py-1 rounded-full border border-slate-700/80 text-slate-300 bg-slate-900/80">
+            React · TypeScript · Tailwind
+          </span>
         </div>
         <button
           onClick={handleExport}
@@ -145,6 +164,8 @@ function App() {
           onBringForward={bringForward}
           onSendBackward={sendBackward}
           onDelete={deleteSelected}
+          canvasTheme={canvasTheme}
+          onChangeCanvasTheme={(theme) => setCanvasTheme(theme)}
         />
 
         <MoodboardCanvas
@@ -153,6 +174,11 @@ function App() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onUpdateElement={updateElement}
+          canvasTheme={canvasTheme}
+          onBringForward={bringForward}
+          onSendBackward={sendBackward}
+          onDeleteSelected={deleteSelected}
+          onDuplicateSelected={duplicateSelected}
         />
       </main>
     </div>
