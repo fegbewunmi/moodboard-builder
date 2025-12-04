@@ -30,8 +30,9 @@ function App() {
   const selectedElement = elements.find((el) => el.id === selectedId) || null;
 
   const addText = (text: string) => {
+    const id = uuid();
     const el: TextElement = {
-      id: uuid(),
+      id,
       type: "text",
       text,
       x: 100,
@@ -41,16 +42,20 @@ function App() {
       rotation: 0,
       color: "#ffffff",
       fontSize: 18,
-      fontFamily: "Inter", // 👈 default font
-      zIndex: elements.length + 1,
+      fontFamily: "Inter",
+      zIndex:
+        elements.length > 0
+          ? Math.max(...elements.map((e) => e.zIndex)) + 1
+          : 1,
     };
     setElements((prev) => [...prev, el]);
-    setSelectedId(el.id);
+    setSelectedId(id);
   };
 
   const addSwatch = (color: string) => {
+    const id = uuid();
     const el: SwatchElement = {
-      id: uuid(),
+      id,
       type: "swatch",
       color,
       x: 120,
@@ -58,26 +63,38 @@ function App() {
       width: 80,
       height: 80,
       rotation: 0,
-      zIndex: elements.length + 1,
+      zIndex:
+        elements.length > 0
+          ? Math.max(...elements.map((e) => e.zIndex)) + 1
+          : 1,
     };
     setElements((prev) => [...prev, el]);
-    setSelectedId(el.id);
+    setSelectedId(id);
+  };
+
+  // image helper
+  const addImageAt = (src: string, x: number, y: number) => {
+    const id = uuid();
+    setElements((prev) => {
+      const maxZ = prev.length > 0 ? Math.max(...prev.map((e) => e.zIndex)) : 0;
+      const el: ImageElement = {
+        id,
+        type: "image",
+        src,
+        x,
+        y,
+        width: 220,
+        height: 160,
+        rotation: 0,
+        zIndex: maxZ + 1,
+      };
+      return [...prev, el];
+    });
+    setSelectedId(id);
   };
 
   const addImage = (src: string) => {
-    const el: ImageElement = {
-      id: uuid(),
-      type: "image",
-      src,
-      x: 140,
-      y: 140,
-      width: 220,
-      height: 160,
-      rotation: 0,
-      zIndex: elements.length + 1,
-    };
-    setElements((prev) => [...prev, el]);
-    setSelectedId(el.id);
+    addImageAt(src, 140, 140);
   };
 
   const updateElement = (id: string, partial: Partial<MoodboardElement>) => {
@@ -118,15 +135,16 @@ function App() {
     const sel = elements.find((el) => el.id === selectedId) || null;
     if (!sel) return;
 
+    const id = uuid();
     const clone: MoodboardElement = {
       ...sel,
-      id: uuid(),
+      id,
       x: sel.x + 24,
       y: sel.y + 24,
       zIndex: sel.zIndex + 1,
     };
     setElements((prev) => [...prev, clone]);
-    setSelectedId(clone.id);
+    setSelectedId(id);
   };
 
   const handleExportPng = useCallback(async () => {
@@ -177,11 +195,10 @@ function App() {
       }
     };
     reader.readAsText(file);
-    // allow selecting the same file again later
     e.target.value = "";
   };
 
-  // 🔥 Keyboard shortcuts
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -196,7 +213,6 @@ function App() {
 
       const sel = elements.find((el) => el.id === selectedId) || null;
 
-      // Delete selected
       if ((e.key === "Delete" || e.key === "Backspace") && sel) {
         e.preventDefault();
         setElements((prev) => prev.filter((el) => el.id !== sel.id));
@@ -204,24 +220,23 @@ function App() {
         return;
       }
 
-      // Duplicate: Cmd/Ctrl + D
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d" && sel) {
         e.preventDefault();
+        const id = uuid();
         const clone: MoodboardElement = {
           ...sel,
-          id: uuid(),
+          id,
           x: sel.x + 24,
           y: sel.y + 24,
           zIndex: sel.zIndex + 1,
         };
         setElements((prev) => [...prev, clone]);
-        setSelectedId(clone.id);
+        setSelectedId(id);
         return;
       }
 
       if (!sel) return;
 
-      // Arrow key nudging
       const nudge = e.shiftKey ? 24 : 4;
       let dx = 0;
       let dy = 0;
@@ -327,6 +342,7 @@ function App() {
           onSendBackward={sendBackward}
           onDeleteSelected={deleteSelected}
           onDuplicateSelected={duplicateSelected}
+          onCreateImageAt={addImageAt}
         />
       </main>
     </div>

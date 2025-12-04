@@ -1,5 +1,9 @@
 import React, { forwardRef, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type {
+  MouseEvent as ReactMouseEvent,
+  ClipboardEvent as ReactClipboardEvent,
+  DragEvent as ReactDragEvent,
+} from "react";
 import type { MoodboardElement } from "./types";
 import type { CanvasTheme } from "./App";
 
@@ -13,6 +17,7 @@ type Props = {
   onSendBackward: () => void;
   onDeleteSelected: () => void;
   onDuplicateSelected: () => void;
+  onCreateImageAt: (src: string, x: number, y: number) => void; // 👈 NEW
 };
 
 type ResizeCorner = "nw" | "ne" | "sw" | "se";
@@ -44,6 +49,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
       onSendBackward,
       onDeleteSelected,
       onDuplicateSelected,
+      onCreateImageAt,
     },
     ref
   ) => {
@@ -57,20 +63,20 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
 
     const [drag, setDrag] = useState<DragState>(null);
 
-    // 🔹 inline text editing state
     const [editingTextId, setEditingTextId] = useState<string | null>(null);
     const [editingValue, setEditingValue] = useState<string>("");
 
     const startEditingText = (el: MoodboardElement) => {
       if (el.type !== "text") return;
       setEditingTextId(el.id);
-      // @ts-expect-error text exists on text element
       setEditingValue(el.text ?? "");
     };
 
     const commitEditingText = () => {
       if (!editingTextId) return;
-      onUpdateElement(editingTextId, { text: editingValue } as any);
+      onUpdateElement(editingTextId, {
+        text: editingValue,
+      } as any);
       setEditingTextId(null);
     };
 
@@ -84,7 +90,6 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
       mode: "move" | "resize" = "move",
       corner?: ResizeCorner
     ) => {
-      // don't start drag while we are editing this text element
       if (editingTextId && editingTextId === el.id) return;
 
       e.preventDefault();
@@ -168,9 +173,60 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
       }
     };
 
+    // 🔹 drag & drop helpers
+    const handleDragOverBoard = (e: ReactDragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    };
+
+    const handleDropBoard = (e: ReactDragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      if (!localRef.current) return;
+
+      const files = Array.from(e.dataTransfer.files);
+      const file = files.find((f) => f.type.startsWith("image/"));
+      if (!file) return;
+
+      const { clientX, clientY } = e;
+      const rect = localRef.current.getBoundingClientRect();
+
+      // center the image around drop point
+      const x = clientX - rect.left - 110;
+      const y = clientY - rect.top - 80;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          onCreateImageAt(reader.result, x, y);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    // paste images (e.g. screenshots)
+    const handlePasteBoard = (e: ReactClipboardEvent<HTMLDivElement>) => {
+      if (!localRef.current) return;
+      const files = Array.from(e.clipboardData.files);
+      const file = files.find((f) => f.type.startsWith("image/"));
+      if (!file) return;
+
+      e.preventDefault();
+
+      const rect = localRef.current.getBoundingClientRect();
+      const x = rect.width / 2 - 110;
+      const y = rect.height / 2 - 80;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          onCreateImageAt(reader.result, x, y);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
     const selected = elements.find((el) => el.id === selectedId) || null;
 
-    // theme styles
     let backgroundColor = "#020617";
     let backgroundImage: string | undefined;
     let backgroundSize: string | undefined;
@@ -211,13 +267,15 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
           style={boardStyle}
           className="relative bg-slate-900/90 rounded-2xl shadow-[0_24px_60px_rgba(15,23,42,0.85)] border border-slate-800/90 w-[920px] h-[620px] overflow-hidden"
           onMouseDown={handleBoardMouseDown}
+          onDragOver={handleDragOverBoard}
+          onDrop={handleDropBoard}
+          onPaste={handlePasteBoard}
+          tabIndex={0} // so the board can receive paste focus
         >
-          {/* theme label */}
           <div className="absolute top-3 left-4 px-2 py-0.5 rounded-full bg-slate-900/80 border border-slate-700 text-[10px] uppercase tracking-wide text-slate-300">
             Theme: {canvasTheme}
           </div>
 
-          {/* floating toolbar */}
           {selected && (
             <div
               className="absolute flex items-center gap-1 px-2 py-1 rounded-full bg-slate-900/95 border border-slate-700 shadow-md shadow-slate-900/70 text-[11px]"
@@ -314,21 +372,15 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                     <div className="w-full h-full flex items-center justify-center rounded-xl bg-slate-900/80 px-3 text-center border border-slate-700/80">
                       <p
                         style={{
-                          // @ts-expect-error text element props
                           color: el.color,
-                          // @ts-expect-error text element props
                           fontSize: el.fontSize,
-                          // @ts-expect-error text element props
                           fontFamily:
                             el.fontFamily ||
                             "Inter, system-ui, -apple-system, sans-serif",
                         }}
                         className="font-medium leading-snug tracking-tight whitespace-pre-wrap"
                       >
-                        {
-                          // @ts-expect-error text element props
-                          el.text
-                        }
+                        {el.text}
                       </p>
                     </div>
                   )}
@@ -350,9 +402,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                       autoFocus
                       className="w-full h-full rounded-xl bg-slate-900/90 px-3 py-2 text-center border border-slate-700/80 text-xs text-slate-50 resize-none outline-none"
                       style={{
-                        // @ts-expect-error text element props
                         fontSize: el.fontSize,
-                        // @ts-expect-error text element props
                         fontFamily:
                           el.fontFamily ||
                           "Inter, system-ui, -apple-system, sans-serif",
@@ -363,12 +413,10 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                   {el.type === "swatch" && (
                     <div
                       className="w-full h-full rounded-xl border border-slate-800"
-                      // @ts-expect-error swatch color
                       style={{ backgroundColor: el.color }}
                     />
                   )}
 
-                  {/* resize handles */}
                   {(["nw", "ne", "sw", "se"] as ResizeCorner[]).map(
                     (corner) => {
                       const cornerClasses =
