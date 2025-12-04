@@ -1,4 +1,5 @@
 import React, { forwardRef, useRef, useState } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import type { MoodboardElement } from "./types";
 
 type Props = {
@@ -32,15 +33,15 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
     const [drag, setDrag] = useState<DragState>(null);
 
     const handleMouseDownElement = (
-      e: React.MouseEvent,
+      e: ReactMouseEvent,
       el: MoodboardElement,
       mode: "move" | "resize" = "move"
     ) => {
+      e.preventDefault();
       e.stopPropagation();
       onSelect(el.id);
 
-      const bounds = localRef.current?.getBoundingClientRect();
-      if (!bounds) return;
+      if (!localRef.current) return;
 
       setDrag({
         id: el.id,
@@ -54,7 +55,7 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
       });
     };
 
-    const handleMouseMove = (e: React.MouseEvent) => {
+    const handleMouseMove = (e: ReactMouseEvent) => {
       if (!drag) return;
       e.preventDefault();
 
@@ -76,17 +77,24 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
 
     const handleMouseUp = () => setDrag(null);
 
+    // only clear selection when clicking the empty board, not elements
+    const handleBoardMouseDown = (e: ReactMouseEvent) => {
+      if (e.target === e.currentTarget) {
+        onSelect(null);
+      }
+    };
+
     return (
       <div
         className="flex-1 flex items-center justify-center bg-slate-950/90"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onClick={() => onSelect(null)}
       >
         <div
           ref={combinedRef}
           className="relative bg-slate-900 rounded-xl shadow-lg border border-slate-800 w-[900px] h-[600px] overflow-hidden"
+          onMouseDown={handleBoardMouseDown}
         >
           {elements
             .slice()
@@ -117,7 +125,9 @@ export const MoodboardCanvas = forwardRef<HTMLDivElement, Props>(
                     <img
                       src={el.src}
                       alt=""
-                      className="w-full h-full object-cover rounded-md"
+                      className="w-full h-full object-cover rounded-md pointer-events-none select-none"
+                      draggable={false}
+                      onDragStart={(ev) => ev.preventDefault()}
                     />
                   )}
 
