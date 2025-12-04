@@ -273,9 +273,6 @@ function App() {
             <h1 className="text-lg font-semibold tracking-tight">
               Moodboard Builder
             </h1>
-            <p className="text-xs text-slate-400">
-              Drag, layer, and export moodboards like a design tool.
-            </p>
           </div>
         </div>
 
